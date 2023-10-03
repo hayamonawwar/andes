@@ -7,7 +7,8 @@ Created on Fri Sep 22 12:52:21 2023
 
 from andes.core import (Algeb, ConstService, ExtParam,
                         IdxParam, Lag, LeadLagLimit, Model, ModelData, NumParam, Washout)
-import math
+
+from andes.core.var import ExtAlgeb
 
 
 class TCSCBaseData(ModelData):
@@ -17,26 +18,26 @@ class TCSCBaseData(ModelData):
 
     def __init__(self):
         super().__init__()
-        self.tcsc = IdxParam(model='TCSC',
-                             info='Thyristor controlled series compensator idx',
-                             mandatory=True,
-                             unique=True,
-                             )
+        self.bus1 = IdxParam(model='Bus', info="idx of from bus")
+        self.bus2 = IdxParam(model='Bus', info="idx of to bus")
+
         self.Sn = NumParam(default=100.0,
                            info="Power rating",
                            tex_name='S_n',
                            unit='MVA',
                            )
+
         self.Vn1 = NumParam(default=110.0,
                             info="AC voltage rating",
                             non_zero=True,
-                            tex_name=r'V_{n1}',
+                            tex_name=r'V_{h}',
                             unit='kV',
                             )
+
         self.Vn2 = NumParam(default=110.0,
-                            info="rated voltage of bus2",
+                            info="AC voltage rating",
                             non_zero=True,
-                            tex_name=r'V_{n2}',
+                            tex_name=r'V_{k}',
                             unit='kV',
                             )
 
@@ -45,11 +46,6 @@ class TCSCBaseData(ModelData):
                           unit='MVA',
                           default=0.0,
                           )
-        self.wref0 = NumParam(info='Base speed reference',
-                              tex_name=r'\omega_{ref0}',
-                              default=1.0,
-                              unit='p.u.',
-                              )
 
         self.alpha = NumParam(info='Firing angle',
                               tex_name='alpha',
@@ -67,11 +63,6 @@ class TCSCBase(Model):
     def __init__(self, system, config):
         Model.__init__(self, system, config)
         self.flags.update({'tds': True})
-        self.wref = Algeb(info='Speed reference variable',
-                          tex_name=r'\omega_{ref}',
-                          v_str='wref0',
-                          e_str='wref0 - wref',
-                          )
 
         self.Xc = NumParam(info='Capacitive reactance ',
                            tex_name='Xc',
@@ -114,7 +105,7 @@ class TCSC1Data(TCSCBaseData):
                                unit='p.u.',
                                )
         self.alphaU = NumParam(info='Minimum firing angle',
-                               tex_name=r'{\alpha}min',
+                               tex_name=r'{\alpha}_min',
                                default=0.0,
                                unit='p.u.',
                                )
@@ -129,35 +120,92 @@ class TCSC1Model(TCSCBase):
         TCSCBase.__init__(self, system, config)
 
         self.Kx = ConstService(info='Constant to calculate reactance of TCSC at a firing angle',
-                               tex_name='K{x}',
-                               v_str='math.sqrt(Xc/Xl)'
+                               tex_name='K_{x}',
+                               v_str='sqrt(Xc/Xl)'
                                )
 
-        # FIXME: R should not be a constant because it depends on \alpha
-        self.R = ConstService(info='Reactance of TCSC',
-                              tex_name=r'X_TCSC(\alpha)',
-                              v_str='[Xc * math.cos(Kx*(math.pi - alpha) \
-                           * [(math.pi() * pow (Kx,4) - math.pi - 2*pow(Kx,4) \
-                               *alpha + 2*pow(Kx,2)*alpha - math.sin(2*alpha)*pow(Kx,4) \
-                            + math.sin(2*alpha)*pow(Kx,2) - \
-                            4*pow(Kx,3)*pow(math.cos(alpha),2)*math.sin(math.pi() - alpha)\
-                            - 4*pow(Kx,2)*math.cos(alpha)*math.sin(alpha) ))] ] / \
-                              [math.pi * (pow(Kx,4) - 2*pow(Kx,2) + 1) \
-                             * math.cos (Kx * (math.pi - alpha))]'
-                              )
+        self.a1 = ExtAlgeb(model='Bus', src='a', indexer=self.bus1, tex_name='a_1',
+                           info='phase angle of the from bus',
+                           ename='Pij',
+                           tex_ename='P_{ij}',
+                           )
+        self.a2 = ExtAlgeb(model='Bus', src='a', indexer=self.bus2, tex_name='a_2',
+                           info='phase angle of the to bus',
+                           ename='Pji',
+                           tex_ename='P_{ji}',
+                           )
+        self.v1 = ExtAlgeb(model='Bus', src='v', indexer=self.bus1, tex_name='v_1',
+                           info='voltage magnitude of the from bus',
+                           ename='Qij',
+                           tex_ename='Q_{ij}',
+                           )
+        self.v2 = ExtAlgeb(model='Bus', src='v', indexer=self.bus2, tex_name='v_2',
+                           info='voltage magnitude of the to bus',
+                           ename='Qji',
+                           tex_ename='Q_{ji}',
+                           )
 
-        self.pref = Algeb(info='Reference power input',
-                          tex_name='P_{ref}',
-                          v_str='pref',  # How to initialize this?
-                          e_str='pref * K - pref',  # FIXME: equation error
-                          )
+        # FIXME: R should not be a constant because it depends on \alpha    // DONE.
 
-        self.pbus = Algeb(info='Power at bus h',  # How to initialize this?
-                          tex_name='P_{h}',
-                          unit='p.u.',
-                          )
+        self.R = Algeb(info='Reactance of TCSC',
+                       tex_name=r'X_TCSC(\alpha)',
+                       v_str='[Xc * cos(Kx*(pi - alpha) '
+                             '* [(pi * pow(Kx,4) -  pi - 2*pow(Kx,4) '
+                             '*alpha + 2*pow(Kx,2)*alpha - sin(2*alpha)*pow(Kx,4)'
+                             '+ sin(2*alpha)*pow(Kx,2) - '
+                             '4*pow(Kx,3)*pow(cos(alpha),2)*sin(pi - alpha)'
+                             '- 4*pow(Kx,2)*cos(alpha)*sin(alpha) ))] ] / '
+                             ' [pi * (pow(Kx,4) - 2*pow(Kx,2) + 1) '
+                             '* cos (Kx * (pi - alpha))]',
+                       #    e_str='[Xc * cos(Kx*(pi - alpha) \
+                       #        * [(pi * pow(Kx,4) - pi - 2*pow(Kx,4) \
+                       #            *alpha + 2*pow(Kx,2)*alpha - sin(2*alpha)*pow(Kx,4) \
+                       #         + sin(2*alpha)*pow(Kx,2) - \
+                       #         4*pow(Kx,3)*pow(cos(alpha),2)*sin(pi - alpha)\
+                       #         - 4*pow(Kx,2)*cos(alpha)*sin(alpha) ))] ] / \
+                       #           [pi * (pow(Kx,4) - 2*pow(Kx,2) + 1) \
+                       #          * cos (Kx * (pi - alpha))] - R',
+                       )
 
-        self.Washout = Washout(u='pref - pbus',
+        self.output = Algeb(info='Final Output', tex_name=r'b(\alpha)',
+                            v_str='1/R',
+                            e_str='1/R - output')
+
+        # FIXME: P and Q at bus h and bus k need to be defined/initialized & make Pref const. // DONE.
+        self.pref = ConstService(info='Reference power input',
+                                 tex_name='P_{ref}',
+                                 v_str='pref',  # How to initialize this?
+                                 )
+
+        self.Ph = Algeb(info='Active power at bus h',
+                        tex_name='P_{h}',
+                        unit='p.u.',
+                        v_str='v1*v2*output*sin(a1 - a2)',
+                        e_str='v1*v2*output*sin(a1 - a2) - Ph'
+                        )
+
+        self.Qh = Algeb(info='Reactive power at bus h',
+                        tex_name='Q_{h}',
+                        unit='p.u.',
+                        v_str='pow(v1,2)*output - v1*v2*output*cos(a1 - a2)',
+                        e_str='pow(v1,2)*output - v1*v2*output*cos(a1 - a2) - Qh'
+                        )
+
+        self.Pk = Algeb(info='Active power at bus k',
+                        tex_name='P_{h}',
+                        unit='p.u.',
+                        v_str='-v1*v2*output*sin(a1 - a2)',
+                        e_str='-v1*v2*output*sin(a1 - a2) - Pk'
+                        )
+
+        self.Qk = Algeb(info='Reactive power at bus k',
+                        tex_name='Q_{h}',
+                        unit='p.u.',
+                        v_str='pow(v2,2)*output - v1*v2*output*cos(a1 - a2)',
+                        e_str='pow(v2,2)*output - v1*v2*output*cos(a1 - a2) - Qk'
+                        )
+
+        self.Washout = Washout(u='pref - Ph',
                                K='Kw * Tw',
                                T=self.Tw,
                                tex_name='x1'
@@ -176,8 +224,6 @@ class TCSC1Model(TCSCBase):
                                upper=self.alphaU,
                                tex_name='x3'
                                )
-        self.output = Algeb(info='Final Output', tex_name=r'b(\alpha)',
-                            e_str='1/R - output')
 
 
 class TCSC(TCSC1Data, TCSC1Model):
