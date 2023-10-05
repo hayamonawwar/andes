@@ -47,11 +47,11 @@ class TCSCBaseData(ModelData):
                           default=0.0,
                           )
 
-        self.alpha = NumParam(info='Firing angle',
-                              tex_name='alpha',
-                              default=0.0,
-                              unit='p.u.',
-                              )
+        # self.alpha = NumParam(info='Firing angle',
+        #                       tex_name='alpha',
+        #                       default=0.0,
+        #                       unit='p.u.',
+        #                       )
 
 
 class TCSCBase(Model):
@@ -64,15 +64,19 @@ class TCSCBase(Model):
         Model.__init__(self, system, config)
         self.flags.update({'tds': True})
 
-        self.Xc = NumParam(info='Capacitive reactance ',
+        self.Xc = NumParam(info='Capacitive reactance',
                            tex_name='Xc',
                            unit='p.u.',
-                           power=True,
+                           power=True,  # FIXME: not power but `z`
+                           # TODO: set default value
+                           default=0.1,
                            )
-        self.Xl = NumParam(info='Inductive reactance ',
+        self.Xl = NumParam(info='Inductive reactance',
                            tex_name='Xl',
                            unit='p.u.',
                            power=True,
+                           default=0.1,
+                           # TODO: set default value
                            )
 
 
@@ -119,6 +123,10 @@ class TCSC1Model(TCSCBase):
     def __init__(self, system, config):
         TCSCBase.__init__(self, system, config)
 
+        self.flags.update({'pflow': True,
+                           'tds': True,
+                           })
+
         self.Kx = ConstService(info='Constant to calculate reactance of TCSC at a firing angle',
                                tex_name='K_{x}',
                                v_str='sqrt(Xc/Xl)'
@@ -155,11 +163,11 @@ class TCSC1Model(TCSCBase):
         self.R = Algeb(info='Reactance of TCSC',
                        tex_name=r'X_TCSC(\alpha)',
                        v_str='Xc'
-                                '*(pi*cos(Kx*(pi - alpha))*pow(Kx,4) -  pi*cos(Kx*(pi - alpha)) - 2*pow(Kx,4)*alpha*cos(Kx*(pi - alpha))'
-                                '+2*pow(Kx,2)*alpha*cos(Kx*(pi - alpha)) - cos(Kx*(pi - alpha))*sin(2*alpha)*pow(Kx,4)'
-                                '+cos(Kx*(pi - alpha))*sin(2*alpha)*pow(Kx,2) - 4*pow(Kx,3)*pow(cos(alpha),2)*sin(Kx*(pi - alpha))'
-                                '-4*pow(Kx,2)*cos(alpha)*sin(alpha)*cos(Kx*(pi - alpha)))/'
-                                '(pi * (pow(Kx,4) - 2*pow(Kx,2) + 1) * cos (Kx * (pi - alpha)))',
+                                '*(pi*cos(Kx*(pi - LL_y))*pow(Kx,4) -  pi*cos(Kx*(pi - LL_y)) - 2*pow(Kx,4)*LL_y*cos(Kx*(pi - LL_y))'
+                                '+2*pow(Kx,2)*LL_y*cos(Kx*(pi - LL_y)) - cos(Kx*(pi - LL_y))*sin(2*LL_y)*pow(Kx,4)'
+                                '+cos(Kx*(pi - LL_y))*sin(2*LL_y)*pow(Kx,2) - 4*pow(Kx,3)*pow(cos(LL_y),2)*sin(Kx*(pi - LL_y))'
+                                '-4*pow(Kx,2)*cos(LL_y)*sin(LL_y)*cos(Kx*(pi - LL_y)))/'
+                                '(pi * (pow(Kx,4) - 2*pow(Kx,2) + 1) * cos (Kx * (pi - LL_y)))',
                        )
 
         self.output = Algeb(info='Final Output', tex_name=r'b(\alpha)',
@@ -213,6 +221,8 @@ class TCSC1Model(TCSCBase):
                                upper=self.alphaU,
                                tex_name='x3'
                                )
+        
+        # LL_y is the actual alpha
 
 
 class TCSC(TCSC1Data, TCSC1Model):
