@@ -145,37 +145,26 @@ class TCSC1Model(TCSCBase):
                            tex_ename='Q_{ji}',
                            )
 
-        # FIXME: R should not be a constant because it depends on \alpha    // DONE.
-
-        self.R = Algeb(info='Reactance of TCSC',
-                       tex_name=r'X_TCSC(\alpha)',
-                       v_str='[Xc * cos(Kx*(pi - alpha) '
-                             '* [(pi * pow(Kx,4) -  pi - 2*pow(Kx,4) '
-                             '*alpha + 2*pow(Kx,2)*alpha - sin(2*alpha)*pow(Kx,4)'
-                             '+ sin(2*alpha)*pow(Kx,2) - '
-                             '4*pow(Kx,3)*pow(cos(alpha),2)*sin(pi - alpha)'
-                             '- 4*pow(Kx,2)*cos(alpha)*sin(alpha) ))] ] / '
-                             ' [pi * (pow(Kx,4) - 2*pow(Kx,2) + 1) '
-                             '* cos (Kx * (pi - alpha))]',
-                       #    e_str='[Xc * cos(Kx*(pi - alpha) \
-                       #        * [(pi * pow(Kx,4) - pi - 2*pow(Kx,4) \
-                       #            *alpha + 2*pow(Kx,2)*alpha - sin(2*alpha)*pow(Kx,4) \
-                       #         + sin(2*alpha)*pow(Kx,2) - \
-                       #         4*pow(Kx,3)*pow(cos(alpha),2)*sin(pi - alpha)\
-                       #         - 4*pow(Kx,2)*cos(alpha)*sin(alpha) ))] ] / \
-                       #           [pi * (pow(Kx,4) - 2*pow(Kx,2) + 1) \
-                       #          * cos (Kx * (pi - alpha))] - R',
-                       )
-
-        self.output = Algeb(info='Final Output', tex_name=r'b(\alpha)',
-                            v_str='1/R',
-                            e_str='1/R - output')
-
         # FIXME: P and Q at bus h and bus k need to be defined/initialized & make Pref const. // DONE.
         self.pref = ConstService(info='Reference power input',
                                  tex_name='P_{ref}',
                                  v_str='pref',  # How to initialize this?
                                  )
+
+        # FIXME: R should not be a constant because it depends on \alpha    // DONE.
+        self.R = Algeb(info='Reactance of TCSC',
+                       tex_name=r'X_TCSC(\alpha)',
+                       v_str='Xc'
+                                '*(pi*cos(Kx*(pi - alpha))*pow(Kx,4) -  pi*cos(Kx*(pi - alpha)) - 2*pow(Kx,4)*alpha*cos(Kx*(pi - alpha))'
+                                '+2*pow(Kx,2)*alpha*cos(Kx*(pi - alpha)) - cos(Kx*(pi - alpha))*sin(2*alpha)*pow(Kx,4)'
+                                '+cos(Kx*(pi - alpha))*sin(2*alpha)*pow(Kx,2) - 4*pow(Kx,3)*pow(cos(alpha),2)*sin(Kx*(pi - alpha))'
+                                '-4*pow(Kx,2)*cos(alpha)*sin(alpha)*cos(Kx*(pi - alpha)))/'
+                                '(pi * (pow(Kx,4) - 2*pow(Kx,2) + 1) * cos (Kx * (pi - alpha)))',
+                       )
+
+        self.output = Algeb(info='Final Output', tex_name=r'b(\alpha)',
+                            v_str='1/R',
+                            e_str='1/R - output')
 
         self.Ph = Algeb(info='Active power at bus h',
                         tex_name='P_{h}',
