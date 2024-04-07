@@ -7,7 +7,7 @@ from andes.core.block import PIDController
 
 
 
-class OLPIData(ModelData):
+class CLPIData(ModelData):
     """
     Data for open-loop PI controller..
     """
@@ -34,10 +34,10 @@ class OLPIData(ModelData):
                            tex_name='t_D',
                            default=0,
                            )
-        
-class OLPIModel(Model):
+
+class CLPIModel(Model):
     """
-    Implementation for open-loop PI controller.
+    Implementation for close-loop PI controller.
     """
 
     def __init__(self, system, config):
@@ -63,10 +63,18 @@ class OLPIModel(Model):
                                  tex_name='PID', info='PID', name='PID',
                                  ref=self.pout0,
                                  )
+        self.pref = ExtAlgeb(indexer=self.gov,
+                             tex_name='P_{ref}',
+                             info='Turbine governor output',
+                             model='TurbineGov',
+                             src='Pref',
+                             e_str='PID_y',
+                             v_str='pref',
+                             )
 
-class OLPI(OLPIData, OLPIModel):
+class CLPI(CLPIData, CLPIModel):
     r"""
-    Open-loop PI controller that takes Generator speed deviation as input.
+    Closed-loop PI controller that takes Generator speed deviation as input.
 
     ```
         ┌────────────────────┐
@@ -78,7 +86,5 @@ class OLPI(OLPIData, OLPIModel):
     """
 
     def __init__(self, system, config):
-        OLPIData.__init__(self)
-        OLPIModel.__init__(self, system, config)
-
-        
+        CLPIData.__init__(self)
+        CLPIModel.__init__(self, system, config)

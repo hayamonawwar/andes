@@ -11,7 +11,7 @@ The package for DAE models in ANDES.
 
 file_classes = list([
     ('info', ['Summary']),
-    ('misc', ['Output']),
+    ('misc', ['Output', 'OLPI', 'CLPI']),
     ('timer', ['Toggle', 'Fault', 'Alter']),
     ('timeseries', ['TimeSeries']),
     ('bus', ['Bus']),
@@ -40,7 +40,7 @@ file_classes = list([
                    'REGCV1', 'REGCV2', 'REGF1', 'REGF2', 'REGF3']),
     ('distributed', ['PVD1', 'ESD1', 'EV1', 'EV2', 'DGPRCT1', 'DGPRCTExt']),
     ('coi', ['COI']),
-    # ('experimental', ['PI2', 'TestDB1', 'TestPI', 'TestLagAWFreeze', 'FixedGen']),
+    #('experimental', ['PI2', 'TestDB1', 'TestPI', 'TestLagAWFreeze', 'FixedGen']),
 ])
 
 
